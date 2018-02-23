@@ -1,9 +1,13 @@
 [package]
 name = "cycle-sort"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Staffan Annerwall"]
 description = "Simple generic Cycle sort implementation"
 license = "Apache-2.0"
+documentation = "https://docs.rs/cycle-sort"
+repository = "https://github.com/stan3984/cycle-sort"
+readme = "README.md"
+keywords = ["cycle", "sort", "minimum", "optimal"]
 
 [dependencies]
 
