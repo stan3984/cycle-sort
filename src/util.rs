@@ -32,14 +32,16 @@ mod tests {
 
     #[test]
     fn sorted() {
+        let mut array = [0; 20];
+        let mut rng = thread_rng();
+
         for length in 0..20 {
-            let mut vector = thread_rng().gen_iter::<i32>()
-                .take(length).collect::<Vec<_>>();
+            let mut slice = &mut array[..length];
+            rng.fill(slice);
 
-            vector.sort();
+            slice.sort();
 
-            assert!(is_sorted(&vector, &|x, y| x <= y));
-            // assert!(is_sorted_par(&vector, &|x, y| x <= y));
+            assert!(is_sorted(&slice, &|a, b| a.lt(b)));
         }
     }
 }

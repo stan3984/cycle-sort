@@ -1,5 +1,7 @@
 #![deny(missing_docs)]
 
+#![no_std]
+
 //! Simple Cycle sort implementation.
 //!
 //! Cycle sort is an unstable comparison sort that minimizes the
@@ -11,7 +13,7 @@
 //! may want to consider checking if sorting is necessary before
 //! actually sorting.
 //!
-//! # Panics
+//! # Safety
 //!
 //! If the comparison function passed to [`cycle_sort_by`] or the key
 //! extraction function passed to [`cycle_sort_by_key`] panics, the
