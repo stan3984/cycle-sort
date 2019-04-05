@@ -1,5 +1,4 @@
 #![deny(missing_docs)]
-
 #![no_std]
 
 //! Simple Cycle sort implementation.
@@ -25,6 +24,4 @@
 mod cycle_sort;
 mod util;
 
-pub use cycle_sort::{cycle_sort,
-                     cycle_sort_by,
-                     cycle_sort_by_key};
+pub use crate::cycle_sort::{cycle_sort, cycle_sort_by, cycle_sort_by_key};

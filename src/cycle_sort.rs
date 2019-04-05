@@ -4,7 +4,7 @@ use core::cmp::Ordering;
 use core::mem::{self, ManuallyDrop};
 use core::ptr;
 
-use util;
+use crate::util;
 
 /// Sorts a slice using the elements' natural ordering and returns the
 /// number of writes made.
@@ -21,7 +21,8 @@ use util;
 /// ```
 #[inline]
 pub fn cycle_sort<T>(slice: &mut [T]) -> usize
-    where T: Ord
+where
+    T: Ord,
 {
     cycle_impl(slice, &|a, b| a.lt(b))
 }
@@ -42,7 +43,8 @@ pub fn cycle_sort<T>(slice: &mut [T]) -> usize
 /// ```
 #[inline]
 pub fn cycle_sort_by<T, F>(slice: &mut [T], compare: &F) -> usize
-    where F: Fn(&T, &T) -> Ordering
+where
+    F: Fn(&T, &T) -> Ordering,
 {
     cycle_impl(slice, &|a, b| compare(a, b) == Ordering::Less)
 }
@@ -63,14 +65,16 @@ pub fn cycle_sort_by<T, F>(slice: &mut [T], compare: &F) -> usize
 /// ```
 #[inline]
 pub fn cycle_sort_by_key<T, F, U>(slice: &mut [T], key: &F) -> usize
-    where F: Fn(&T) -> U,
-          U: Ord
+where
+    F: Fn(&T) -> U,
+    U: Ord,
 {
     cycle_impl(slice, &|a, b| key(a).lt(&key(b)))
 }
 
 fn cycle_impl<T, F>(slice: &mut [T], is_less: &F) -> usize
-    where F: Fn(&T, &T) -> bool
+where
+    F: Fn(&T, &T) -> bool,
 {
     let length = slice.len();
 
@@ -81,19 +85,21 @@ fn cycle_impl<T, F>(slice: &mut [T], is_less: &F) -> usize
 
     let mut writes = 0;
 
-    for src in 0 .. length - 1 {
+    for src in 0..length - 1 {
         let mut tmp = unsafe { ManuallyDrop::new(ptr::read(&slice[src])) };
         let mut dst = src;
 
         // count number of elements in `slice[src..]` strictly less than `tmp`
-        for i in src + 1 .. length {
+        for i in src + 1..length {
             if is_less(&slice[i], &tmp) {
                 dst += 1;
             }
         }
 
         // tmp is in correct position, nothing to do
-        if dst == src { continue; }
+        if dst == src {
+            continue;
+        }
 
         // place `tmp` after any possible duplicates
         while util::are_equal(&*tmp, &slice[dst], is_less) {
@@ -109,7 +115,7 @@ fn cycle_impl<T, F>(slice: &mut [T], is_less: &F) -> usize
         while dst != src {
             dst = src;
 
-            for i in src + 1 .. length {
+            for i in src + 1..length {
                 if is_less(&slice[i], &tmp) {
                     dst += 1;
                 }
@@ -129,10 +135,19 @@ fn cycle_impl<T, F>(slice: &mut [T], is_less: &F) -> usize
 
 #[cfg(test)]
 mod tests {
-    use cycle_sort;
+    use crate::cycle_sort;
 
-    extern crate rand;
-    use self::rand::{thread_rng, Rng};
+    extern crate std;
+    use std::string::String;
+    use std::vec::Vec;
+
+    use rand::{distributions::Alphanumeric, seq::SliceRandom, thread_rng, Rng};
+
+    macro_rules! assert_sorted {
+        ($x:expr) => {
+            assert!($x.windows(2).all(|w| w[0] <= w[1]))
+        };
+    }
 
     #[test]
     fn zero_sized_elements() {
@@ -140,7 +155,7 @@ mod tests {
 
         let mut array = [(); SIZE];
 
-        for length in (0..10).chain(1000..SIZE) {
+        for length in (0..10).chain(1000..SIZE + 1) {
             let mut slice = &mut array[..length];
             let writes = cycle_sort(&mut slice);
 
@@ -155,15 +170,39 @@ mod tests {
         let mut array = [0_i32; SIZE];
         let mut rng = thread_rng();
 
-        for length in (0..20).chain(100..SIZE) {
+        for length in (0..20).chain(100..SIZE + 1) {
             let mut slice = &mut array[..length];
 
-            for _ in 0..5 {
+            for _ in 0..10 {
                 rng.fill(slice);
                 cycle_sort(&mut slice);
 
-                assert!(slice.windows(2).all(|w| w[0] <= w[1]));
+                assert_sorted!(slice);
             }
+        }
+    }
+
+    #[test]
+    fn sort_strings() {
+        const SIZE: usize = 128;
+        const LENGTH: usize = 128;
+
+        let mut rng = thread_rng();
+        let mut vec: Vec<String> = Vec::with_capacity(SIZE);
+
+        for _ in 0..10 {
+            vec.clear();
+
+            // generate `SIZE` strings of length `LENGTH` with random `char`s
+            for _ in 0..SIZE {
+                vec.push(rng.sample_iter(&Alphanumeric).take(LENGTH).collect());
+            }
+
+            // shuffle and sort strings
+            vec.as_mut_slice().shuffle(&mut rng);
+            cycle_sort(vec.as_mut_slice());
+
+            assert_sorted!(vec.as_slice());
         }
     }
 
@@ -178,7 +217,7 @@ mod tests {
             let mut slice = &mut array[..length];
 
             for divisor in &[11, 13, 17, 19] {
-                for _ in 0..5 {
+                for _ in 0..10 {
                     rng.fill(slice);
                     for x in slice.iter_mut() {
                         *x %= divisor;
@@ -186,7 +225,7 @@ mod tests {
 
                     cycle_sort(&mut slice);
 
-                    assert!(slice.windows(2).all(|w| w[0] <= w[1]));
+                    assert_sorted!(slice);
                 }
             }
         }
@@ -196,29 +235,24 @@ mod tests {
     fn correct_writes() {
         const SIZE: usize = 25;
 
-        let mut array = {
-            let mut a = [0; SIZE];
+        let mut array = [0; SIZE];
 
-            for i in 0..SIZE {
-                a[i] = i;
-            }
-
-            a
-        };
+        for i in 0..SIZE {
+            array[i] = i;
+        }
 
         let mut rng = thread_rng();
 
-        for length in 0..SIZE {
+        for length in 1..SIZE + 1 {
             let mut slice = &mut array[..length];
 
-            for _ in 0..5 {
-                rng.shuffle(&mut slice);
+            for _ in 0..10 {
+                slice.shuffle(&mut rng);
 
-                let expect = slice.iter().enumerate()
-                    .filter(|&(i, v)| i != *v).count();
+                let expect = slice.iter().enumerate().filter(|&(i, v)| i != *v).count();
                 let writes = cycle_sort(&mut slice);
 
-                assert!(slice.windows(2).all(|w| w[0] <= w[1]));
+                assert_sorted!(slice);
                 assert_eq!(writes, expect);
             }
         }
